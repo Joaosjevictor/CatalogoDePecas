@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  coordinator:
+    image: basho/riak-kv:ubuntu-2.2.3
+    ports:
+      - "8087:8087" 
+      - "8098:8098" 
+    environment:
+      - CLUSTER_NAME=riak
+    labels:
+      - "com.basho.riak.cluster.name=riak"
+
+  member:
+    image: basho/riak-kv:ubuntu-2.2.3
+    expose:
+      - "8087"
+      - "8098"
+    environment:
+      - CLUSTER_NAME=riak
+      - COORDINATOR_NODE=coordinator
+    depends_on:
+      - coordinator
