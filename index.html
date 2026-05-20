@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoCore ERP - Consulta de Peças</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <style>
+        body { 
+            background-color: #e9ecef; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        
+        /* Estilo da barra superior simulando um sistema de gestão */
+        .navbar-custom { background-color: #1e293b; }
+        .navbar-brand { font-weight: 600; letter-spacing: 0.5px; }
+        
+        /* Caixas de conteúdo com visual de "cartão" limpo */
+        .card { 
+            border: none; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+        }
+        
+        /* Área de busca flutuante */
+        .search-container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            margin-top: 30px; 
+            margin-bottom: 30px;
+        }
+        
+        /* Estilização do botão e inputs */
+        .btn-search { background-color: #2563eb; color: white; font-weight: 600; transition: 0.2s; }
+        .btn-search:hover { background-color: #1d4ed8; color: white; }
+        .form-control:focus { box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25); border-color: #2563eb; }
+        
+        /* Destaque para o SKU */
+        .sku-badge { 
+            background-color: #f1f5f9; 
+            color: #0f172a; 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            padding: 8px 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+        }
+        
+        /* Status do Servidor */
+        .server-status { font-size: 0.85rem; color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        .status-dot { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        /* Estilização refinada da tabela */
+        .table th { background-color: #f8fafc; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .table td { vertical-align: middle; font-size: 0.95rem; }
+        
+        .resultado-box { display: none; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="bi bi-tools me-2"></i> Queiroz AutoPeças <span class="badge bg-primary ms-2" style="font-size: 0.7rem;">Módulo Balcão</span>
+        </a>
+        <div class="ms-auto server-status">
+            <span class="status-dot"></span> Riak KV Conectado (0.01ms)
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            
+            <div class="search-container text-center">
+                <h4 class="mb-3 fw-bold text-dark"><i class="bi bi-search me-2 text-primary"></i> Consulta de Aplicações</h4>
+                <p class="text-muted mb-4 small">Digite o código reduzido da peça para busca em tempo real.</p>
+                
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
+                    <input type="text" id="inputSku" class="form-control" placeholder="Ex: sp500, n1020, ph3569..." autocomplete="off" onkeypress="if(event.key === 'Enter') buscarPeca()">
+                    <button class="btn btn-search px-5" onclick="buscarPeca()">Consultar</button>
+                </div>
+            </div>
+
+            <div id="alertaErro" class="alert alert-danger d-none shadow-sm border-0" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Código não encontrado no catálogo. Verifique o SKU e tente novamente.
+            </div>
+
+            <div id="areaResultado" class="card resultado-box mb-5">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-start">
+                    <div>
+                        <h3 class="mb-1 fw-bold text-dark" id="resNome">Nome da Peça</h3>
+                        <div class="d-flex gap-3 text-muted mt-2">
+                            <span><i class="bi bi-tag-fill me-1"></i> <strong id="resMarca">Marca</strong></span>
+                            <span><i class="bi bi-grid-fill me-1"></i> <span id="resCategoria">Categoria</span></span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <span class="d-block text-muted small mb-1">CÓDIGO SKU</span>
+                        <div class="sku-badge" id="resSku">SKU</div>
+                    </div>
+                </div>
+                
+                <div class="card-body px-4 pb-4">
+                    <hr class="text-muted opacity-25 mb-4">
+                    <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-car-front-fill me-2"></i> Veículos Compatíveis:</h6>
+                    
+                    <div class="table-responsive border rounded">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Montadora</th>
+                                    <th>Veículo</th>
+                                    <th>Motor</th>
+                                    <th>Ano</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaAplicacoes">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    async function buscarPeca() {
+        // Pega o valor e já converte para minúsculo no front-end por garantia
+        const skuDigitado = document.getElementById('inputSku').value.trim().toLowerCase();
+        const alertaErro = document.getElementById('alertaErro');
+        const areaResultado = document.getElementById('areaResultado');
+
+        if (!skuDigitado) return;
+
+        try {
+            const resposta = await fetch(`http://localhost:8080/api/pecas/${skuDigitado}`);
+
+            if (resposta.ok) {
+                const peca = await resposta.json();
+                
+                document.getElementById('resNome').innerText = peca.nomePeca;
+                document.getElementById('resSku').innerText = peca.sku.toUpperCase(); // Mostra maiúsculo na tela para ficar bonito
+                document.getElementById('resMarca').innerText = peca.marca;
+                document.getElementById('resCategoria').innerText = peca.categoria;
+
+                const corpoTabela = document.getElementById('tabelaAplicacoes');
+                corpoTabela.innerHTML = ''; 
+                
+                peca.aplicacoes.forEach(app => {
+                    // Aqui corrigimos a ordem: Motor primeiro, depois o Ano.
+                    corpoTabela.innerHTML += `
+                        <tr>
+                            <td><span class="badge bg-secondary">${app.montadora}</span></td>
+                            <td class="fw-bold">${app.veiculo}</td>
+                            <td>${app.motor}</td>
+                            <td>${app.ano}</td>
+                        </tr>
+                    `;
+                });
+
+                alertaErro.classList.add('d-none');
+                areaResultado.style.display = 'block';
+
+            } else {
+                areaResultado.style.display = 'none';
+                alertaErro.classList.remove('d-none');
+            }
+        } catch (erro) {
+            alert("Erro de conexão com o banco de dados. Verifique se o servidor está rodando.");
+        }
+    }
+</script>
+</body>
+</html>
