@@ -22,7 +22,6 @@ public class CargaInicialDados implements CommandLineRunner {
     public void run(String... args) throws Exception {
         System.out.println("⏳ Iniciando a carga de dados no Riak KV...");
 
-        // Criando uma lista profissional de peças
         List<Peca> catalogo = Arrays.asList(
             // FREIOS
             new Peca("n1020", "Pastilha de Freio Dianteira", "Cobreq", "Freios", Arrays.asList(
@@ -85,8 +84,6 @@ public class CargaInicialDados implements CommandLineRunner {
             new Peca("md102", "Motor de Partida", "Valeo", "Elétrica", Arrays.asList(
                 new Aplicacao("Renault", "Duster", "1.6 16V", "2012-2016")))
         );
-
-        // Laço de repetição: O código varre a lista e salva peça por peça automaticamente
         int contador = 0;
         for (Peca peca : catalogo) {
             try {
